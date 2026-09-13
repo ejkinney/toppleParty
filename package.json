@@ -1,0 +1,30 @@
+{
+  "name": "topple-party",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Jackbox-style physics party game. PC hosts, phones are the controllers, Jenga towers decide who goes home.",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:server": "npm run dev -w @topple/server",
+    "dev:host": "npm run dev -w @topple/host",
+    "dev:controller": "npm run dev -w @topple/controller",
+    "build": "npm run build -w @topple/host && npm run build -w @topple/controller && npm run build -w @topple/server",
+    "start": "node apps/server/dist/index.js",
+    "typecheck": "tsc -b --pretty",
+    "clean": "rm -rf apps/*/dist apps/*/dist-types apps/*/.vite packages/*/dist *.tsbuildinfo apps/*/*.tsbuildinfo packages/*/*.tsbuildinfo",
+    "smoke": "npm run build && node scripts/smoke.mjs",
+    "smoke:only": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}

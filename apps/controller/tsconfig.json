@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "./dist-types",
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "types": ["vite/client", "node"]
+  },
+  "include": ["src/**/*.ts", "vite.config.ts"],
+  "exclude": ["dist", "dist-types"],
+  "references": [{ "path": "../../packages/shared" }]
+}

@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    // Declarations only: esbuild owns dist/, so type-checking must never drop
+    // unbundled JS next to the bundle it would shadow.
+    "outDir": "./dist-types",
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "lib": ["ES2022"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "dist-types"],
+  "references": [{ "path": "../../packages/shared" }]
+}
