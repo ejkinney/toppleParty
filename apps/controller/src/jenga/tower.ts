@@ -546,8 +546,12 @@ export class JengaTower {
     this.options.canvas.setPointerCapture(event.pointerId);
     this.setPointer(event);
 
-    // A touch that lands on a block grabs it; anything else orbits the camera.
-    const block = this.phase === 'pulling' ? this.pick() : null;
+    // A touch that lands on a legal block grabs it; a refused one is swallowed;
+    // anything else orbits the camera.
+    const hit = this.phase === 'pulling' ? this.pick() : null;
+    if (hit && 'refused' in hit) return;
+
+    const block = hit?.block ?? null;
     if (block && this.grabPointer === null) {
       this.grabPointer = event.pointerId;
       this.grabbed = block;
@@ -611,7 +615,12 @@ export class JengaTower {
     this.dragPoint.z = clamp(this.dragPoint.z, -limit, limit);
   }
 
-  private pick(): Block | null {
+  /**
+   * What the touch landed on. "Refused" is distinct from "nothing" because a
+   * refusal has to consume the gesture: falling through to the orbit branch
+   * would spin the camera every time a player reached for the top course.
+   */
+  private pick(): { block: Block } | { refused: true } | null {
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const meshes = this.blocks.map((block) => block.mesh);
     const hits = this.raycaster.intersectObjects(meshes, false);
@@ -628,10 +637,10 @@ export class JengaTower {
       if (block.body.translation().y > top - TOP_COURSE_BAND) {
         this.options.onStatus('Too high - take one from lower down.');
         this.options.haptic([40, 30, 40]);
-        return null;
+        return { refused: true };
       }
     }
-    return block;
+    return { block };
   }
 
   private readonly resize = (): void => {

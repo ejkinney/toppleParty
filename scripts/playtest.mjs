@@ -125,12 +125,18 @@ async function attemptPull(page, { dx, dy, direction, reach }) {
   const verdict = await until(async () => {
     if ((await blockCount(page)) < before) return true;
     const status = (await towerStatus(page)).toLowerCase();
-    return status.includes('not out yet') || status.includes('too high') || status.includes('came down');
+    return (
+      status.includes('not out yet') ||
+      status.includes('too high') ||
+      status.includes('hold your breath') ||
+      status.includes('came down')
+    );
   }, 1600, 120);
 
   if (!verdict) return 'missed';
   if ((await blockCount(page)) < before) return 'out';
   const status = (await towerStatus(page)).toLowerCase();
+  if (status.includes('hold your breath')) return 'out';
   if (status.includes('came down')) return 'down';
   // The top course is off-limits, so this candidate is simply the wrong block.
   return status.includes('too high') ? 'top' : 'short';
@@ -143,7 +149,9 @@ async function attemptPull(page, { dx, dy, direction, reach }) {
  */
 function* grabCandidates() {
   const columns = [0, -46, 46, -88, 88, -24, 24];
-  const rows = [0, -34, 34, -68, 20, -14];
+  // Positive is lower on screen. A raised camera means the middle of the canvas
+  // looks straight into the top course, so every useful grab is below centre.
+  const rows = [70, 110, 40, 150, 90, 20, 190];
   for (const reach of [0.42, 0.5]) {
     for (const dy of rows) {
       for (const dx of columns) {
