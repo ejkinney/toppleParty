@@ -350,7 +350,9 @@ try {
     const comparable = outcomes.filter((o) => !o.collapsed && !o.stuck && o.after >= 0);
     if (comparable.length > 0) {
       let compared = 0;
+      let eliminated = 0;
       let mismatch = '';
+      let nothingToMirror = false;
       const matched = await until(async () => {
         // The seat list is unpainted between scenes - the scoreboard and the
         // next round's intro both clear it - so an empty TV means "not yet",
@@ -359,11 +361,16 @@ try {
         if ((await tv.locator('.seat').count()) === 0) return false;
 
         compared = 0;
+        eliminated = 0;
         mismatch = '';
         for (const outcome of comparable) {
           const seat = tv.locator('.seat', { hasText: outcome.name }).first();
           const text = ((await seat.textContent().catch(() => '')) ?? '').trim();
-          if (!text || text.includes('OUT')) continue;
+          if (!text) continue;
+          if (text.includes('OUT')) {
+            eliminated++;
+            continue;
+          }
           compared++;
           if (!text.includes(String(outcome.after) + ' blk')) {
             // Report what the TV actually says: an off-by-one and a stale
@@ -372,14 +379,26 @@ try {
             return false;
           }
         }
+        // A tower can come down during the settle after the pull loop has
+        // stopped watching. If every puller went out that way there is simply
+        // nothing left to mirror - which is not the same as a mismatch, and
+        // not something to claim a pass for either.
+        if (compared === 0 && eliminated === comparable.length) {
+          nothingToMirror = true;
+          return true;
+        }
         return compared > 0;
       // Long enough to outlast a scoreboard and a round intro back to back.
       }, 45000);
-      check(
-        'round ' + round + ': the TV mirrors the phones block counts',
-        matched,
-        compared === 0 ? 'nothing left to compare' : mismatch,
-      );
+      if (nothingToMirror) {
+        log('  round ' + round + ': every puller was eliminated, nothing left to mirror');
+      } else {
+        check(
+          'round ' + round + ': the TV mirrors the phones block counts',
+          matched,
+          compared === 0 ? 'the TV never painted a seat list' : mismatch,
+        );
+      }
     }
 
     // The TV is the authority: a seat struck through means a tower came down,
