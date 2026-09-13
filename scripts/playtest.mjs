@@ -352,12 +352,18 @@ try {
       let compared = 0;
       let mismatch = '';
       const matched = await until(async () => {
+        // The seat list is unpainted between scenes - the scoreboard and the
+        // next round's intro both clear it - so an empty TV means "not yet",
+        // never "disagrees". Counting that as a comparison is how this check
+        // reported a desync when the only problem was its own timing.
+        if ((await tv.locator('.seat').count()) === 0) return false;
+
         compared = 0;
         mismatch = '';
         for (const outcome of comparable) {
           const seat = tv.locator('.seat', { hasText: outcome.name }).first();
           const text = ((await seat.textContent().catch(() => '')) ?? '').trim();
-          if (text.includes('OUT')) continue;
+          if (!text || text.includes('OUT')) continue;
           compared++;
           if (!text.includes(String(outcome.after) + ' blk')) {
             // Report what the TV actually says: an off-by-one and a stale
@@ -367,7 +373,8 @@ try {
           }
         }
         return compared > 0;
-      }, 20000);
+      // Long enough to outlast a scoreboard and a round intro back to back.
+      }, 45000);
       check(
         'round ' + round + ': the TV mirrors the phones block counts',
         matched,
