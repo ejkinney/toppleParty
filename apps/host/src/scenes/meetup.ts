@@ -199,7 +199,11 @@ export class MeetupScene extends Scene<void> {
 
     seat.mirror.apply(message.snap);
     player.tower = message.snap;
-    player.blocks = message.blocks || snapshotBlockCount(message.snap);
+    // `||` would treat a legitimate zero as missing and fall back to counting
+    // the snapshot. Both are zero on a total collapse today, so nothing breaks
+    // yet - but the fallback exists for a malformed message, not for an empty
+    // tower, and the difference matters the moment either changes.
+    player.blocks = message.blocks ?? snapshotBlockCount(message.snap);
     seat.pullsOwed = Math.max(0, message.pullsLeft);
     player.pullsOwed = seat.pullsOwed;
 

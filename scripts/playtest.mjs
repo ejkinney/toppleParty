@@ -350,21 +350,28 @@ try {
     const comparable = outcomes.filter((o) => !o.collapsed && !o.stuck && o.after >= 0);
     if (comparable.length > 0) {
       let compared = 0;
+      let mismatch = '';
       const matched = await until(async () => {
         compared = 0;
+        mismatch = '';
         for (const outcome of comparable) {
           const seat = tv.locator('.seat', { hasText: outcome.name }).first();
-          const text = (await seat.textContent().catch(() => '')) ?? '';
+          const text = ((await seat.textContent().catch(() => '')) ?? '').trim();
           if (text.includes('OUT')) continue;
           compared++;
-          if (!text.includes(String(outcome.after) + ' blk')) return false;
+          if (!text.includes(String(outcome.after) + ' blk')) {
+            // Report what the TV actually says: an off-by-one and a stale
+            // reading need very different fixes.
+            mismatch = outcome.name + ' phone=' + outcome.after + ' tv="' + text + '"';
+            return false;
+          }
         }
         return compared > 0;
       }, 20000);
       check(
         'round ' + round + ': the TV mirrors the phones block counts',
         matched,
-        compared === 0 ? 'nothing left to compare' : 'counts disagreed',
+        compared === 0 ? 'nothing left to compare' : mismatch,
       );
     }
 
