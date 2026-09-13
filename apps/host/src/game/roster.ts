@@ -1,5 +1,7 @@
 import {
   TOTAL_BLOCKS,
+  clamp,
+  pristineSnapshot,
   type PlayerId,
   type PlayerIdentity,
   type TowerSnapshot,
@@ -33,6 +35,22 @@ export class Roster {
   private readonly players = new Map<PlayerId, PlayerState>();
   /** Elimination order, earliest first. Drives final placings. */
   private readonly graveyard: PlayerId[] = [];
+  /** Blocks every tower starts with. Shortened for playtesting the endgame. */
+  private readonly startingBlocks: number;
+
+  constructor(startingBlocks = TOTAL_BLOCKS) {
+    this.startingBlocks = clamp(Math.floor(startingBlocks), 3, TOTAL_BLOCKS);
+  }
+
+  /**
+   * A short tower has to be seeded explicitly: without a snapshot the phone
+   * builds a full one, and the TV and the phone would disagree from move one.
+   */
+  private freshTower(): { blocks: number; tower: TowerSnapshot | null } {
+    return this.startingBlocks === TOTAL_BLOCKS
+      ? { blocks: TOTAL_BLOCKS, tower: null }
+      : { blocks: this.startingBlocks, tower: pristineSnapshot(this.startingBlocks) };
+  }
 
   get size(): number {
     return this.players.size;
@@ -45,12 +63,13 @@ export class Roster {
       existing.online = true;
       return existing;
     }
+    const fresh = this.freshTower();
     const state: PlayerState = {
       identity,
       online: true,
       eliminated: false,
-      blocks: TOTAL_BLOCKS,
-      tower: null,
+      blocks: fresh.blocks,
+      tower: fresh.tower,
       pullsOwed: 0,
       wins: 0,
       lastPlace: 0,
@@ -102,9 +121,10 @@ export class Roster {
   resetForNewGame(): void {
     this.graveyard.length = 0;
     for (const player of this.players.values()) {
+      const fresh = this.freshTower();
       player.eliminated = false;
-      player.blocks = TOTAL_BLOCKS;
-      player.tower = null;
+      player.blocks = fresh.blocks;
+      player.tower = fresh.tower;
       player.pullsOwed = 0;
       player.wins = 0;
       player.lastPlace = 0;

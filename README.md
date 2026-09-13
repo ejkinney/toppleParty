@@ -74,7 +74,8 @@ Playing over the internet instead of a LAN: point `PUBLIC_BASE_URL` at a tunnel
 | **Debris Dodge** | Thumbstick + jump | Survive longest as blocks rain down and pile up |
 
 Force one while tuning it: `http://localhost:5173/?game=sumo` (`sumo`, `tray`,
-`sling`, `ramp`, `debris`).
+`sling`, `ramp`, `debris`). Add `?tower=9` to start everyone on a short tower so
+the endgame arrives quickly.
 
 ## Layout
 
@@ -85,6 +86,7 @@ apps/host            the TV: Three.js + Rapier, minigames, meetup board
 apps/controller      the phone: control schemes + its own Jenga simulation
 scripts/dev.mjs      runs all three with a join-URL banner
 scripts/smoke.mjs    end-to-end browser test of a whole round
+scripts/playtest.mjs plays a full game, pulling real blocks, to a winner
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for why it is split this way,
@@ -100,12 +102,20 @@ npm run typecheck      # tsc -b across every workspace
 # only wants to play.
 npm install --no-save playwright && npx playwright install chromium
 npm run smoke          # boots the build, drives two phones through a full round
+npm run playtest       # plays a whole game out, pulling real blocks, to a winner
 ```
 
-The smoke test is the one that matters: it opens the host in a real browser,
-joins two controllers, readies up, plays a round out, and asserts the scoreboard,
-the meetup and the tower all appear. Everything interesting in this game lives in
-seams a type checker cannot see.
+`smoke` opens the host in a real browser, joins two controllers, reloads one to
+check it resumes its seat, readies up, plays a round, and asserts the scoreboard,
+the meetup and the tower all appear.
+
+`playtest` goes further: it drags blocks out of towers with a real pointer, so it
+covers the grab raycast, the drag spring, extraction, collapse detection,
+elimination and the winner screen — the part of the game that only exists under a
+finger. It starts towers short (`--tower=9`) so the endgame arrives in a few
+rounds instead of fifteen.
+
+Everything interesting in this game lives in seams a type checker cannot see.
 
 ## Stack, and why
 

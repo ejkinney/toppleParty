@@ -10,6 +10,15 @@ import { Roster } from './game/roster.js';
 import { HostLink } from './net/host-link.js';
 import { Director } from './game/director.js';
 
+/**
+ * Reads the ?tower=<n> dev override: start every tower at n blocks instead of
+ * a full 27, so the endgame can be reached in a couple of rounds while tuning.
+ */
+function forcedTowerSize(): number | undefined {
+  const raw = Number.parseInt(new URLSearchParams(location.search).get('tower') ?? '', 10);
+  return Number.isFinite(raw) ? raw : undefined;
+}
+
 /** Reads the ?game=<id> dev override, ignoring anything unrecognised. */
 function forcedMinigame(): MinigameId | null {
   const requested = new URLSearchParams(location.search).get('game');
@@ -31,7 +40,7 @@ async function boot(): Promise<void> {
   await initPhysics();
 
   const stage = new Stage(canvas);
-  const roster = new Roster();
+  const roster = new Roster(forcedTowerSize());
   const input = new InputStore();
   const link = new HostLink();
   const runner = new SceneRunner();

@@ -6,8 +6,8 @@ import {
   TOTAL_BLOCKS,
   TOWER,
   clamp,
+  pristineSnapshot,
   round,
-  slotTransform,
   type TowerSnapshot,
 } from '@topple/shared';
 
@@ -26,7 +26,14 @@ const BLOCK_H = TOWER.BLOCK_HEIGHT * SIM;
 const BLOCK_W = TOWER.BLOCK_WIDTH * SIM;
 
 /** A block whose centre is this far off the tower axis has left the tower. */
-const EXTRACTED_RADIUS = BLOCK_L * 0.85;
+const EXTRACTED_RADIUS = BLOCK_L * 0.7;
+/**
+ * How much world width the camera keeps in frame, derived from the extraction
+ * distance rather than guessed. Without this the camera can frame the tower so
+ * tightly that pulling a block clear needs more travel than the screen has
+ * width - the block simply cannot be extracted.
+ */
+const LATERAL_VIEW = EXTRACTED_RADIUS * 2.5;
 /** Top speed the grab can drag a block, so a pull cannot punch through. */
 const GRAB_SPEED = BLOCK_L * 9;
 const GRAB_STIFFNESS = 14;
@@ -96,7 +103,8 @@ export class JengaTower {
   private orbitLast = { x: 0, y: 0 };
   private yaw = 0.6;
   private pitch = 0.32;
-  private distance = BLOCK_L * 6.2;
+  private distance = BLOCK_L * 4.4;
+  private focusHeight = BLOCK_H * 4;
   private settleTimer = 0;
   private heightBeforePull = 0;
   private streamAccumulator = 0;
@@ -166,7 +174,7 @@ export class JengaTower {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.scene.background = new THREE.Color(0x0b1020);
-    this.scene.fog = new THREE.Fog(0x0b1020, this.distance * 1.6, this.distance * 4);
+    this.scene.fog = new THREE.Fog(0x0b1020, BLOCK_L * 7, BLOCK_L * 18);
 
     const hemi = new THREE.HemisphereLight(0xc8dcff, 0x241f38, 1.1);
     this.scene.add(hemi);
@@ -206,6 +214,21 @@ export class JengaTower {
     table.position.y = -BLOCK_H * 0.3;
     table.receiveShadow = true;
     this.scene.add(table);
+
+    // Drag a block past this ring and it is out. Without it players have no
+    // way to know how far "clear of the tower" is until they let go and fail.
+    const guide = new THREE.Mesh(
+      new THREE.RingGeometry(EXTRACTED_RADIUS, EXTRACTED_RADIUS + BLOCK_H * 0.22, 64),
+      new THREE.MeshBasicMaterial({
+        color: 0xffc53d,
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.DoubleSide,
+      }),
+    );
+    guide.rotation.x = -Math.PI / 2;
+    guide.position.y = BLOCK_H * 0.06;
+    this.scene.add(guide);
   }
 
   private blockMaterial(id: number): THREE.MeshStandardMaterial {
@@ -251,14 +274,9 @@ export class JengaTower {
     return block;
   }
 
+  /** A fresh tower is just the shared pristine snapshot, restored. */
   private buildFresh(): void {
-    const axis = new THREE.Vector3(0, 1, 0);
-    const quaternion = new THREE.Quaternion();
-    for (let i = 0; i < TOTAL_BLOCKS; i++) {
-      const slot = slotTransform(i);
-      quaternion.setFromAxisAngle(axis, slot.rotated ? Math.PI / 2 : 0);
-      this.spawnBlock(i, { x: slot.x * SIM, y: slot.y * SIM, z: slot.z * SIM }, quaternion);
-    }
+    this.restore(pristineSnapshot(TOTAL_BLOCKS));
   }
 
   private restore(snapshot: TowerSnapshot): void {
@@ -357,16 +375,34 @@ export class JengaTower {
     }
   }
 
+  /**
+   * Frames whatever tower is actually there. A fixed distance left a short
+   * tower stranded in the middle of the screen, and as blocks come out the
+   * gentle push-in doubles as tension. Damped, or a wobbling tower would make
+   * the camera breathe.
+   */
   private updateCamera(): void {
-    const height = this.towerHeight();
-    const focus = Math.max(height * 0.55, BLOCK_H * 3);
+    const height = Math.max(this.towerHeight(), BLOCK_H * 3);
+    const halfFov = (this.camera.fov * Math.PI) / 360;
+    const tan = Math.tan(halfFov);
+
+    // Two constraints: fit the tower vertically, and keep enough room either
+    // side that a finger can drag a block clear without leaving the canvas.
+    const forHeight = (height * 1.45) / (2 * tan);
+    const forDrag = LATERAL_VIEW / (2 * tan * Math.max(this.camera.aspect, 0.2));
+    const wanted = Math.max(forHeight, forDrag);
+    this.distance += (wanted - this.distance) * 0.04;
+
+    const focus = height * 0.5;
+    this.focusHeight += (focus - this.focusHeight) * 0.04;
+
     const radius = this.distance;
     this.camera.position.set(
       Math.sin(this.yaw) * Math.cos(this.pitch) * radius,
-      focus + Math.sin(this.pitch) * radius,
+      this.focusHeight + Math.sin(this.pitch) * radius,
       Math.cos(this.yaw) * Math.cos(this.pitch) * radius,
     );
-    this.camera.lookAt(0, focus, 0);
+    this.camera.lookAt(0, this.focusHeight, 0);
   }
 
   private towerHeight(): number {

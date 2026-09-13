@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { SNAPSHOT_STRIDE, TOWER, slotTransform, type TowerSnapshot } from '@topple/shared';
+import { SNAPSHOT_STRIDE, TOWER, pristineSnapshot, type TowerSnapshot } from '@topple/shared';
 import { GEOMETRY, material, shade } from '../core/materials.js';
 
 /**
@@ -85,19 +85,11 @@ export class TowerMirror {
 
   /**
    * Builds a pristine tower locally, for players who have not pulled yet.
-   * The lattice comes from the shared slotTransform so the TV's idea of a
-   * fresh tower is byte-identical to the phone's.
+   * Shares pristineSnapshot with the phone, so the TV's idea of a fresh tower
+   * is identical to the one being simulated.
    */
   applyPristine(blockCount: number): void {
-    const snapshot: TowerSnapshot = [];
-    const axis = new THREE.Vector3(0, 1, 0);
-    const quaternion = new THREE.Quaternion();
-    for (let i = 0; i < blockCount; i++) {
-      const slot = slotTransform(i);
-      quaternion.setFromAxisAngle(axis, slot.rotated ? Math.PI / 2 : 0);
-      snapshot.push(i, slot.x, slot.y, slot.z, quaternion.x, quaternion.y, quaternion.z, quaternion.w);
-    }
-    this.apply(snapshot);
+    this.apply(pristineSnapshot(blockCount));
   }
 
   dispose(): void {

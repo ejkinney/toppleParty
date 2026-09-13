@@ -45,3 +45,31 @@ export function slotTransform(index: number): {
   const y = TOWER.BLOCK_HEIGHT * (level + 0.5);
   return rotated ? { x: offset, y, z: 0, rotated } : { x: 0, y, z: offset, rotated };
 }
+
+/** Half-turn about Y, as a quaternion. Odd courses are laid crosswise. */
+const CROSSWISE_W = Math.SQRT1_2;
+
+/**
+ * A pristine tower of `count` blocks as a snapshot.
+ *
+ * Both the phone's simulation and the TV's mirror build fresh towers from this
+ * one function, so "a new tower" means exactly the same thing on both sides,
+ * and a short tower for playtesting is just a smaller count.
+ */
+export function pristineSnapshot(count = TOTAL_BLOCKS): TowerSnapshot {
+  const out: TowerSnapshot = [];
+  for (let i = 0; i < count; i++) {
+    const slot = slotTransform(i);
+    out.push(
+      i,
+      slot.x,
+      slot.y,
+      slot.z,
+      0,
+      slot.rotated ? CROSSWISE_W : 0,
+      0,
+      slot.rotated ? CROSSWISE_W : 1,
+    );
+  }
+  return out;
+}

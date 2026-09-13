@@ -21,7 +21,9 @@
     "typecheck": "tsc -b --pretty",
     "clean": "rm -rf apps/*/dist apps/*/dist-types apps/*/.vite packages/*/dist *.tsbuildinfo apps/*/*.tsbuildinfo packages/*/*.tsbuildinfo",
     "smoke": "npm run build && node scripts/smoke.mjs",
-    "smoke:only": "node scripts/smoke.mjs"
+    "smoke:only": "node scripts/smoke.mjs",
+    "playtest": "npm run build && node scripts/playtest.mjs",
+    "playtest:only": "node scripts/playtest.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
