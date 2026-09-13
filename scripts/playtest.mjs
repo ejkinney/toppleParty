@@ -354,10 +354,17 @@ try {
       let mismatch = '';
       let nothingToMirror = false;
       const matched = await until(async () => {
-        // The seat list is unpainted between scenes - the scoreboard and the
-        // next round's intro both clear it - so an empty TV means "not yet",
-        // never "disagrees". Counting that as a comparison is how this check
-        // reported a desync when the only problem was its own timing.
+        // Three times now this check has reported a desync when the truth was
+        // that it could not look: an unpainted seat list between scenes, every
+        // puller eliminated, and the podium - which has no seat list and never
+        // will. They share one root cause, so they get one guard: only compare
+        // when the TV is actually showing seats, and give up quietly when the
+        // game has moved somewhere that has none.
+        const title = ((await tv.locator('.title').first().textContent().catch(() => '')) ?? '');
+        if (title.includes('WINS') || title.includes('NOBODY')) {
+          nothingToMirror = true;
+          return true;
+        }
         if ((await tv.locator('.seat').count()) === 0) return false;
 
         compared = 0;
