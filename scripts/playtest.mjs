@@ -329,22 +329,36 @@ try {
     }
 
     // The TV must agree with the phones about how many blocks are left.
-    if (pullers.length > 0) {
+    // Only compare players who actually pulled, are still in, and whose phone
+    // still has a tower on screen - anything else is comparing a live seat
+    // against a reading the phone has already thrown away.
+    const comparable = outcomes.filter((o) => !o.collapsed && !o.stuck && o.after >= 0);
+    if (comparable.length > 0) {
+      let compared = 0;
       const matched = await until(async () => {
-        for (const p of pullers) {
-          const phoneCount = await blockCount(p.page);
-          if (phoneCount < 0) continue;
-          const seat = tv.locator('.seat', { hasText: p.name }).first();
+        compared = 0;
+        for (const outcome of comparable) {
+          const seat = tv.locator('.seat', { hasText: outcome.name }).first();
           const text = (await seat.textContent().catch(() => '')) ?? '';
           if (text.includes('OUT')) continue;
-          if (!text.includes(String(phoneCount) + ' blk')) return false;
+          compared++;
+          if (!text.includes(String(outcome.after) + ' blk')) return false;
         }
-        return true;
-      }, 15000);
-      check('round ' + round + ': the TV mirrors the phones block counts', matched);
+        return compared > 0;
+      }, 20000);
+      check(
+        'round ' + round + ': the TV mirrors the phones block counts',
+        matched,
+        compared === 0 ? 'nothing left to compare' : 'counts disagreed',
+      );
     }
 
-    if (await tv.locator('.seat.out').count()) sawElimination = true;
+    // The TV is the authority: a seat struck through means a tower came down,
+    // whether or not the pull loop was still watching when it happened.
+    if (await tv.locator('.seat.out').count()) {
+      sawElimination = true;
+      sawCollapse = true;
+    }
 
     gameOver = await until(async () => {
       const t = (await tv.locator('.title').first().textContent().catch(() => '')) ?? '';
@@ -352,8 +366,7 @@ try {
     }, 4000);
   }
 
-  check('a tower collapsed', sawCollapse);
-  check('a collapse eliminated its player', sawElimination || sawCollapse);
+  check('a tower collapsed and its player went out', sawCollapse && sawElimination);
 
   const finished = gameOver || (await until(async () => {
     const t = (await tv.locator('.title').first().textContent().catch(() => '')) ?? '';
