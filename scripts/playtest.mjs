@@ -264,8 +264,21 @@ try {
       return k && k.toLowerCase().startsWith('round');
     }, 30000);
     if (!started) {
-      // The party may already be over.
-      gameOver = (await tv.locator('.title').first().textContent().catch(() => ''))?.includes('WINS') ?? false;
+      // Say what the TV is actually showing, rather than leaving a bare
+      // "round N never started" to be guessed at.
+      const shown = await tv.evaluate(() => {
+        const text = (sel) => document.querySelector(sel)?.textContent?.trim() ?? '';
+        return {
+          kicker: text('.kicker'),
+          title: text('.title'),
+          subtitle: text('.subtitle'),
+          hint: text('.hint'),
+          seats: [...document.querySelectorAll('.seat')].map((s) => s.textContent.trim()),
+        };
+      }).catch(() => null);
+      log('  round ' + round + ' never started; TV shows ' + JSON.stringify(shown));
+      const title = shown?.title ?? '';
+      gameOver = title.includes('WINS') || title.includes('NOBODY');
       break;
     }
 

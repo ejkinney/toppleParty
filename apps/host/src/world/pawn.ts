@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { TokenShape } from '@topple/shared';
-import { GEOMETRY, material, shade } from '../core/materials.js';
+import { GEOMETRY, material, shade, shareGeometry } from '../core/materials.js';
 
 /**
  * Board-game pawns built entirely from primitives - no meshes, no textures,
@@ -15,7 +15,8 @@ const bespoke = new Map<string, THREE.BufferGeometry>();
 function taper(key: string, top: number, bottom: number, height: number): THREE.BufferGeometry {
   let geometry = bespoke.get(key);
   if (!geometry) {
-    geometry = new THREE.CylinderGeometry(top, bottom, height, 18);
+    // Registered as shared: these outlive the scene that first built a pawn.
+    geometry = shareGeometry(new THREE.CylinderGeometry(top, bottom, height, 18));
     bespoke.set(key, geometry);
   }
   return geometry;

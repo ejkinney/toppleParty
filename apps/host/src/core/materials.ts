@@ -23,7 +23,7 @@ export function ringGeometry(radius: number, thickness = 0.09): THREE.TorusGeome
   const key = radius.toFixed(3) + ':' + thickness.toFixed(3);
   let geometry = rings.get(key);
   if (!geometry) {
-    geometry = new THREE.TorusGeometry(radius, thickness, 10, 64);
+    geometry = shareGeometry(new THREE.TorusGeometry(radius, thickness, 10, 64));
     rings.set(key, geometry);
   }
   return geometry;
@@ -38,6 +38,22 @@ export const GEOMETRY = {
 } as const;
 
 export type GeometryKind = keyof typeof GEOMETRY;
+
+/**
+ * Geometries that outlive the scene using them.
+ *
+ * disposeObject() frees anything a scene built for itself, but module-level
+ * caches (the unit primitives here, the pawn parts in world/pawn.ts) are shared
+ * by every later scene. Anything registered here is left alone; forgetting to
+ * register a cached geometry means the second scene to use it renders from a
+ * geometry the first one already disposed.
+ */
+const shared = new Set<THREE.BufferGeometry>(Object.values(GEOMETRY));
+
+export function shareGeometry<T extends THREE.BufferGeometry>(geometry: T): T {
+  shared.add(geometry);
+  return geometry;
+}
 
 const materials = new Map<string, THREE.MeshStandardMaterial>();
 
@@ -89,9 +105,7 @@ export function disposeObject(root: THREE.Object3D): void {
   root.traverse((node) => {
     const mesh = node as THREE.Mesh;
     if (!mesh.isMesh) return;
-    const geometry = mesh.geometry;
-    const shared = Object.values(GEOMETRY).some((g) => g === geometry);
-    if (!shared) geometry.dispose();
+    if (!shared.has(mesh.geometry)) mesh.geometry.dispose();
   });
   root.removeFromParent();
 }
