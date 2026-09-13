@@ -152,7 +152,10 @@ function* grabCandidates() {
   // Positive is lower on screen. A raised camera means the middle of the canvas
   // looks straight into the top course, so every useful grab is below centre.
   const rows = [70, 110, 40, 150, 90, 20, 190];
-  for (const reach of [0.42, 0.5]) {
+  // Longer drags first: a grab that falls short costs an attempt, and the
+  // camera may have orbited from earlier misses, so a generous reach is the
+  // safer opening bid.
+  for (const reach of [0.55, 0.68, 0.42]) {
     for (const dy of rows) {
       for (const dx of columns) {
         yield { dx, dy, direction: dx < 0 ? -1 : 1, reach };

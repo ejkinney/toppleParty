@@ -140,19 +140,27 @@ export class MeetupScene extends Scene<void> {
     if (!anyPulls) this.finish();
   }
 
-  override fixedUpdate(dt: number): void {
+  /**
+   * Nothing here is simulated, so every timer runs on wall-clock.
+   *
+   * These used to accumulate in fixedUpdate, which counts SIMULATED seconds:
+   * the loop caps fixed steps per frame and drops the backlog past that, so a
+   * host that renders slowly falls arbitrarily far behind real time. The
+   * deadline is the valve that stops one silent phone holding the party
+   * hostage, and measuring it in simulated seconds meant it stretched without
+   * limit exactly when the machine was already struggling - a meetup could
+   * hang indefinitely waiting on a pull that never came.
+   */
+  override frame(dt: number): void {
     this.elapsed += dt;
     if (this.elapsed > this.deadline && !this.finished) {
-      // A phone that never answers must not hold the party hostage.
       for (const seat of this.seats.values()) {
         if (!seat.resolved) this.ctx.ui.toast(this.nameOf(seat.id) + ' ran out of time', 'bad');
         seat.resolved = true;
       }
       this.finish();
     }
-  }
 
-  override frame(dt: number): void {
     for (const seat of this.seats.values()) {
       if (seat.walk < 1) {
         seat.walk = clamp(seat.walk + (dt * WALK_SPEED) / seat.from.distanceTo(seat.to), 0, 1);
