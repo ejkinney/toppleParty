@@ -256,7 +256,7 @@ export class MeetupScene extends Scene<void> {
     this.ctx.ui.bottom(
       '<div class="stack" style="width:100%">' +
         seatsHtml(this.ctx.roster.all()) +
-        '<div class="center hint">Pull a block on your phone. ' +
+        '<div class="center hint">Pull a block on your phone &#183; never from the top course &#183; ' +
         TOTAL_BLOCKS +
         ' to start &#183; last tower standing wins</div>' +
         '</div>',

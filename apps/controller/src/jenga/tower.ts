@@ -38,6 +38,17 @@ const LATERAL_VIEW = EXTRACTED_RADIUS * 2.5;
 const GRAB_SPEED = BLOCK_L * 9;
 const GRAB_STIFFNESS = 14;
 
+/**
+ * Real Jenga forbids taking from the top course, and the reason is structural,
+ * not decorative: without that rule the winning strategy is to decapitate your
+ * own tower one block at a time. Removing the top course never destabilises
+ * anything, so a tower can shed most of its blocks and still be a squat,
+ * perfectly stable stack - and the elimination the whole game is built on
+ * never happens. Playtesting a nine-block tower down to four without a single
+ * collapse is what surfaced this.
+ */
+const TOP_COURSE_BAND = BLOCK_H * 0.5;
+
 /** Collapse thresholds, in block heights. */
 const COLLAPSE_HEIGHT_DROP = 1.25;
 const COLLAPSE_SETTLED_DROP = 0.7;
@@ -476,9 +487,10 @@ export class JengaTower {
   }
 
   private pullPrompt(): string {
-    return this.pullsLeft > 1
-      ? 'Pull ' + this.pullsLeft + ' blocks. Drag one out.'
-      : 'Pull one block. Drag it out.';
+    const what = this.pullsLeft > 1 ? 'Pull ' + this.pullsLeft + ' blocks' : 'Pull one block';
+    return this.blocks.length > TOWER.PER_LEVEL
+      ? what + ' - drag it past the ring. Not from the top course.'
+      : what + ' - drag it past the ring.';
   }
 
   /** Packed transforms in shared units. Rounded: 4dp is sub-millimetre here. */
@@ -605,7 +617,21 @@ export class JengaTower {
     const hits = this.raycaster.intersectObjects(meshes, false);
     const first = hits[0];
     if (!first) return null;
-    return this.blocks.find((block) => block.mesh === first.object) ?? null;
+
+    const block = this.blocks.find((entry) => entry.mesh === first.object);
+    if (!block) return null;
+
+    // Down to a single course there is nothing left to protect, and refusing
+    // every block would strand the player with a pull they cannot make.
+    if (this.blocks.length > TOWER.PER_LEVEL) {
+      const top = this.towerHeight();
+      if (block.body.translation().y > top - TOP_COURSE_BAND) {
+        this.options.onStatus('Too high - take one from lower down.');
+        this.options.haptic([40, 30, 40]);
+        return null;
+      }
+    }
+    return block;
   }
 
   private readonly resize = (): void => {

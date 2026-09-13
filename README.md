@@ -60,7 +60,9 @@ Playing over the internet instead of a LAN: point `PUBLIC_BASE_URL` at a tunnel
 2. A minigame runs for up to ~45 seconds. Your phone shows the controls for it.
 3. The scoreboard ranks everyone. The bottom half loses; **last place loses twice**.
 4. At the meetup, every loser pulls a block out of their tower on their phone
-   while the TV mirrors it live.
+   while the TV mirrors it live. As in real Jenga you **cannot take from the top
+   course** — without that rule you would just decapitate your own tower and it
+   would never fall.
 5. Tower falls → eliminated. Repeat until one player is left.
 
 ## The minigames

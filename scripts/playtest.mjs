@@ -72,11 +72,22 @@ process.on('SIGINT', () => {
  * Tower interaction
  * ------------------------------------------------------------------ */
 
-/** Blocks still in this phone's tower, read off its HUD. */
+/**
+ * Blocks still in this phone's tower, read off its HUD.
+ *
+ * The HUD vanishes the moment the meetup closes the tower, so the last value
+ * seen is remembered - otherwise a pull that succeeded right before the scene
+ * moved on reads as a failure.
+ */
+const lastSeenCount = new WeakMap();
 async function blockCount(page) {
   const text = await page.locator('.jenga-hud .pill.good').first().textContent().catch(() => '');
   const n = Number.parseInt((text ?? '').split('/')[0]?.trim() ?? '', 10);
-  return Number.isFinite(n) ? n : -1;
+  if (Number.isFinite(n)) {
+    lastSeenCount.set(page, n);
+    return n;
+  }
+  return lastSeenCount.get(page) ?? -1;
 }
 
 async function towerStatus(page) {
@@ -112,16 +123,17 @@ async function attemptPull(page, { dx, dy, direction, reach }) {
 
   // A miss leaves the prompt untouched, and there is no reason to wait for it.
   const verdict = await until(async () => {
-    if ((await blockCount(page)) < before) return 'out';
+    if ((await blockCount(page)) < before) return true;
     const status = (await towerStatus(page)).toLowerCase();
-    if (status.includes('not out yet')) return 'short';
-    if (status.includes('came down')) return 'down';
-    return false;
+    return status.includes('not out yet') || status.includes('too high') || status.includes('came down');
   }, 1600, 120);
 
   if (!verdict) return 'missed';
   if ((await blockCount(page)) < before) return 'out';
-  return (await towerStatus(page)).toLowerCase().includes('came down') ? 'down' : 'short';
+  const status = (await towerStatus(page)).toLowerCase();
+  if (status.includes('came down')) return 'down';
+  // The top course is off-limits, so this candidate is simply the wrong block.
+  return status.includes('too high') ? 'top' : 'short';
 }
 
 /**
@@ -155,6 +167,7 @@ async function clearPulls(page, label, budgetMs = 55000) {
 
     const result = await attemptPull(page, candidate);
     if (result === 'gone') break;
+    if (result === 'top') continue;
     if (result === 'missed' || result === 'short') continue;
 
     // A block came out (or took the tower with it): wait for the verdict.
